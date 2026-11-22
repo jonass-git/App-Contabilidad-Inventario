@@ -1,14 +1,14 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Barcode, Plus, Search, TriangleAlert } from 'lucide-react';
-import type { Product } from '../../../types/database';
+import type { ProductWithBarcodes } from '../../../types/database';
 import { triggerScanFeedback } from '../../../utils/feedback';
 import { InventoryTable } from './InventoryTable';
 
 interface InventoryViewProps {
-  products: Product[];
+  products: ProductWithBarcodes[];
   loading: boolean;
   error: string | null;
-  onUpdateStock: (product: Product, newStock: number) => Promise<void>;
+  onUpdateStock: (product: ProductWithBarcodes, newStock: number) => Promise<void>;
   onRequestNewProduct: (barcode?: string) => void;
 }
 
@@ -41,6 +41,7 @@ export function InventoryView({
       return (
         product.name.toLowerCase().includes(q) ||
         product.barcode.toLowerCase().includes(q) ||
+        product.barcodes.some((code) => code.toLowerCase().includes(q)) ||
         (product.category?.toLowerCase().includes(q) ?? false)
       );
     });
@@ -55,7 +56,7 @@ export function InventoryView({
 
   /**
    * Compatibilidad con lectores de códigos de barras físicos USB / Bluetooth:
-   * envían el código seguido de la tecla Enter.
+   * busca coincidencia exacta en cualquiera de los códigos/sabores vinculados.
    */
   const handleSearchKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
@@ -63,7 +64,9 @@ export function InventoryView({
     if (!code) return;
 
     e.preventDefault();
-    const exactMatch = products.find((p) => p.barcode === code);
+    const exactMatch = products.find(
+      (p) => p.barcode === code || p.barcodes.includes(code),
+    );
 
     if (exactMatch) {
       setHighlightedId(exactMatch.id);
@@ -88,7 +91,6 @@ export function InventoryView({
 
   return (
     <div className="space-y-4">
-      {/* Cabecera de métricas discretas */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-zinc-950">Inventario</h1>
@@ -113,7 +115,6 @@ export function InventoryView({
         </button>
       </div>
 
-      {/* Barra de búsqueda + controles de filtro y lector USB */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-400" />

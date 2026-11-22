@@ -8,7 +8,7 @@ import { ProductFormModal } from './features/inventory/components/ProductFormMod
 import { useProducts } from './features/inventory/hooks/useProducts';
 import { ScannerView } from './features/scanner/components/ScannerView';
 import { isSupabaseConfigured } from './lib/supabase';
-import type { Product, ProductInsert } from './types/database';
+import type { ProductInsert, ProductWithBarcodes } from './types/database';
 
 function getInitialTab(): ActiveTab {
   if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -29,6 +29,7 @@ export function App() {
     findByBarcode,
     createProduct,
     updateStock,
+    commitScannerSession,
   } = useProducts();
 
   const {
@@ -48,7 +49,7 @@ export function App() {
     void refetchLogs();
   };
 
-  const handleUpdateStockInline = async (product: Product, newStock: number) => {
+  const handleUpdateStockInline = async (product: ProductWithBarcodes, newStock: number) => {
     await updateStock(product, newStock);
     void refetchLogs();
   };
@@ -97,16 +98,12 @@ export function App() {
 
       {activeTab === 'scanner' && (
         <ScannerView
+          products={products}
           findByBarcode={findByBarcode}
-          onApplyAudit={async (product, countedStock, type) => {
-            const updated = await updateStock(product, countedStock, type);
+          onCommitSession={async (payload) => {
+            const saved = await commitScannerSession(payload);
             void refetchLogs();
-            return updated;
-          }}
-          onCreateProduct={async (input) => {
-            const created = await createProduct(input);
-            void refetchLogs();
-            return created;
+            return saved;
           }}
         />
       )}

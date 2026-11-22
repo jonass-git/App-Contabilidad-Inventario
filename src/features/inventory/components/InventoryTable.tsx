@@ -1,26 +1,28 @@
 import { useState } from 'react';
-import { Check, Minus, Plus } from 'lucide-react';
-import type { Product } from '../../../types/database';
+import { Check, Layers, Minus, Plus } from 'lucide-react';
+import type { ProductWithBarcodes } from '../../../types/database';
 
 interface InventoryTableProps {
-  products: Product[];
+  products: ProductWithBarcodes[];
   highlightedId: string | null;
-  onUpdateStock: (product: Product, newStock: number) => Promise<void>;
+  onUpdateStock: (product: ProductWithBarcodes, newStock: number) => Promise<void>;
 }
 
 interface StockRowProps {
-  product: Product;
+  product: ProductWithBarcodes;
   highlighted: boolean;
-  onUpdateStock: (product: Product, newStock: number) => Promise<void>;
+  onUpdateStock: (product: ProductWithBarcodes, newStock: number) => Promise<void>;
 }
 
 function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
   const [editing, setEditing] = useState(false);
   const [draftStock, setDraftStock] = useState(String(product.stock_current));
   const [saving, setSaving] = useState(false);
+  const [showAllCodes, setShowAllCodes] = useState(false);
 
   const isOutOfStock = product.stock_current === 0;
   const isLowStock = product.stock_current <= product.stock_min;
+  const hasMultipleBarcodes = product.barcodes.length > 1;
 
   const commitStock = async (targetStock: number) => {
     const sanitized = Math.max(0, Math.floor(targetStock));
@@ -44,9 +46,9 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
       }`}
     >
       <td className="py-3 pr-3 pl-4">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-start gap-2.5">
           <span
-            className={`h-2 w-2 shrink-0 rounded-full ${
+            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
               isOutOfStock
                 ? 'bg-red-500'
                 : isLowStock
@@ -63,14 +65,37 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
           />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-zinc-950">{product.name}</p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
               <span className="font-mono">{product.barcode}</span>
+              {hasMultipleBarcodes && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCodes((prev) => !prev)}
+                  className="inline-flex items-center gap-1 rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100"
+                >
+                  <Layers className="h-3 w-3" />
+                  {product.barcodes.length} códigos
+                </button>
+              )}
               {product.category && (
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600">
+                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600 sm:hidden">
                   {product.category}
                 </span>
               )}
             </div>
+
+            {showAllCodes && hasMultipleBarcodes && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {product.barcodes.map((code) => (
+                  <span
+                    key={code}
+                    className="rounded border border-zinc-200 bg-white px-1.5 py-0.5 font-mono text-[11px] text-zinc-600"
+                  >
+                    {code}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </td>
@@ -191,7 +216,7 @@ export function InventoryTable({
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50/70 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              <th className="py-2.5 pr-3 pl-4">Producto / Código</th>
+              <th className="py-2.5 pr-3 pl-4">Producto / Códigos</th>
               <th className="hidden px-3 py-2.5 sm:table-cell">Categoría</th>
               <th className="hidden px-3 py-2.5 text-right md:table-cell">Mínimo</th>
               <th className="py-2.5 pr-4 pl-3 text-right">Stock actual</th>

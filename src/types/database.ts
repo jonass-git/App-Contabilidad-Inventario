@@ -30,6 +30,26 @@ export type ProductUpdate = {
   updated_at?: string;
 };
 
+export type ProductBarcode = {
+  id: string;
+  product_id: string;
+  barcode: string;
+  variant_label: string | null;
+  created_at: string;
+};
+
+export type ProductBarcodeInsert = {
+  id?: string;
+  product_id: string;
+  barcode: string;
+  variant_label?: string | null;
+  created_at?: string;
+};
+
+export type ProductWithBarcodes = Product & {
+  barcodes: string[];
+};
+
 export type InventoryLog = {
   id: string;
   product_id: string;
@@ -61,6 +81,20 @@ export type Database = {
         Insert: ProductInsert;
         Update: ProductUpdate;
         Relationships: [];
+      };
+      product_barcodes: {
+        Row: ProductBarcode;
+        Insert: ProductBarcodeInsert;
+        Update: Partial<ProductBarcodeInsert>;
+        Relationships: [
+          {
+            foreignKeyName: 'product_barcodes_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       inventory_logs: {
         Row: InventoryLog;
