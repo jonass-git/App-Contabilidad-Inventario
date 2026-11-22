@@ -1,4 +1,5 @@
-import { Check, Delete, Layers, Minus, Plus, Trash2, X } from 'lucide-react';
+import { Check, Delete, Layers, MapPin, Minus, Plus, Trash2, X } from 'lucide-react';
+import { PRODUCT_LOCATIONS, type ProductLocation } from '../../../config/appConfig';
 import type { ProductWithBarcodes } from '../../../types/database';
 
 export type CountMode = 'increment' | 'manual';
@@ -7,16 +8,16 @@ export type DraftSession =
   | {
       kind: 'existing';
       product: ProductWithBarcodes;
+      targetLocation: ProductLocation;
       countedStock: number;
-      /** Todos los códigos pasados en esta sesión (con conteo por código) */
       scannedCounts: Record<string, number>;
-      /** Códigos nuevos (sabores nuevos) pendientes de vincular al pulsar Aceptar */
       pendingNewBarcodes: string[];
     }
   | {
       kind: 'new';
       name: string;
       category: string | null;
+      location: ProductLocation;
       stockMin: number;
       countedStock: number;
       scannedCounts: Record<string, number>;
@@ -30,6 +31,7 @@ interface ScannedProductCardProps {
   saving: boolean;
   onModeChange: (mode: CountMode) => void;
   onGroupNewBarcodesChange: (enabled: boolean) => void;
+  onLocationChange: (location: ProductLocation) => void;
   onCountChange: (value: number) => void;
   onRemovePendingBarcode: (barcode: string) => void;
   onApply: () => Promise<void>;
@@ -45,6 +47,7 @@ export function ScannedProductCard({
   saving,
   onModeChange,
   onGroupNewBarcodesChange,
+  onLocationChange,
   onCountChange,
   onRemovePendingBarcode,
   onApply,
@@ -52,6 +55,8 @@ export function ScannedProductCard({
 }: ScannedProductCardProps) {
   const isNewProduct = session.kind === 'new';
   const title = isNewProduct ? session.name : session.product.name;
+  const activeLocation = isNewProduct ? session.location : session.targetLocation;
+  const locationChanged = !isNewProduct && session.targetLocation !== session.product.location;
   const theoreticalStock = isNewProduct ? 0 : session.product.stock_current;
   const diff = session.countedStock - theoreticalStock;
   const scannedCodes = Object.entries(session.scannedCounts);
@@ -102,7 +107,7 @@ export function ScannedProductCard({
                 </span>
                 {' · '}
                 {session.product.barcodes.length}{' '}
-                {session.product.barcodes.length === 1 ? 'código vinculado' : 'códigos vinculados'}
+                {session.product.barcodes.length === 1 ? 'código' : 'códigos'}
               </>
             )}
           </p>
@@ -116,6 +121,37 @@ export function ScannedProductCard({
         >
           <X className="h-5 w-5" />
         </button>
+      </div>
+
+      {/* Selector de ubicación del producto en esta sesión */}
+      <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50/60 p-2.5">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600">
+            <MapPin className="h-3 w-3 text-zinc-400" />
+            Ubicación asignada
+          </span>
+          {locationChanged && (
+            <span className="text-[11px] font-medium text-amber-700">
+              Cambia de {session.product.location} → {session.targetLocation}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-4 gap-1">
+          {PRODUCT_LOCATIONS.map((loc) => (
+            <button
+              key={loc}
+              type="button"
+              onClick={() => onLocationChange(loc)}
+              className={`min-h-[36px] rounded-md border px-1.5 text-[11px] font-medium transition-colors ${
+                activeLocation === loc
+                  ? 'border-zinc-950 bg-zinc-950 text-white'
+                  : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100'
+              }`}
+            >
+              {loc}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Toggle de agrupación de sabores / códigos nuevos */}
@@ -277,7 +313,8 @@ export function ScannedProductCard({
           <div className="flex flex-wrap gap-1.5">
             {scannedCodes.map(([code, qty]) => {
               const isPendingNew = newCodesSet.has(code);
-              const canRemove = isPendingNew && !(isNewProduct && session.pendingNewBarcodes.length <= 1);
+              const canRemove =
+                isPendingNew && !(isNewProduct && session.pendingNewBarcodes.length <= 1);
               return (
                 <span
                   key={code}

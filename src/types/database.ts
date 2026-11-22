@@ -1,3 +1,5 @@
+import type { ProductLocation } from '../config/appConfig';
+
 export type InventoryLogType = 'audit' | 'manual_adjustment' | 'restock';
 
 export type Product = {
@@ -5,6 +7,7 @@ export type Product = {
   barcode: string;
   name: string;
   category: string | null;
+  location: ProductLocation;
   stock_current: number;
   stock_min: number;
   updated_at: string;
@@ -15,6 +18,7 @@ export type ProductInsert = {
   barcode: string;
   name: string;
   category?: string | null;
+  location?: ProductLocation;
   stock_current?: number;
   stock_min?: number;
   updated_at?: string;
@@ -25,6 +29,7 @@ export type ProductUpdate = {
   barcode?: string;
   name?: string;
   category?: string | null;
+  location?: ProductLocation;
   stock_current?: number;
   stock_min?: number;
   updated_at?: string;

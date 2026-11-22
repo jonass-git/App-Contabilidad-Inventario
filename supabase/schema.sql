@@ -1,5 +1,5 @@
 -- ============================================================================
--- Esquema de Base de Datos — PWA Gestión de Inventario (Multi-Código / Sabores)
+-- Esquema de Base de Datos — PWA Gestión de Inventario (Multi-Código + Ubicaciones)
 -- Ejecutar en: Supabase Dashboard -> SQL Editor
 -- ============================================================================
 
@@ -9,13 +9,37 @@ create table if not exists public.products (
   barcode text not null unique,
   name text not null,
   category text,
+  location text not null default 'Tienda',
   stock_current integer not null default 0,
   stock_min integer not null default 5,
   updated_at timestamp with time zone not null default now()
 );
 
+-- Migración segura de columna location para instalaciones previas
+alter table public.products
+  add column if not exists location text not null default 'Tienda';
+
+update public.products
+  set location = 'Tienda'
+  where location is null or location not in ('Oficina', 'Recepción', 'Tienda', 'Almacén');
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'products_location_check'
+      and conrelid = 'public.products'::regclass
+  ) then
+    alter table public.products
+      add constraint products_location_check
+      check (location in ('Oficina', 'Recepción', 'Tienda', 'Almacén'));
+  end if;
+end $$;
+
 create index if not exists idx_products_barcode on public.products (barcode);
 create index if not exists idx_products_name on public.products (name);
+create index if not exists idx_products_location on public.products (location);
 
 create or replace function public.set_updated_at()
 returns trigger as $$

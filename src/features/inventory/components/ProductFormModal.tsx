@@ -1,11 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { X } from 'lucide-react';
-import { appConfig } from '../../../config/appConfig';
+import { MapPin, X } from 'lucide-react';
+import {
+  appConfig,
+  PRODUCT_LOCATIONS,
+  type ProductLocation,
+} from '../../../config/appConfig';
 import type { ProductInsert } from '../../../types/database';
 
 interface ProductFormModalProps {
   open: boolean;
   initialBarcode?: string;
+  initialLocation?: ProductLocation;
   onClose: () => void;
   onSubmit: (data: ProductInsert) => Promise<void>;
 }
@@ -13,12 +18,14 @@ interface ProductFormModalProps {
 export function ProductFormModal({
   open,
   initialBarcode = '',
+  initialLocation = appConfig.DEFAULT_LOCATION,
   onClose,
   onSubmit,
 }: ProductFormModalProps) {
   const [barcode, setBarcode] = useState(initialBarcode);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [location, setLocation] = useState<ProductLocation>(initialLocation);
   const [stockCurrent, setStockCurrent] = useState('0');
   const [stockMin, setStockMin] = useState(String(appConfig.DEFAULT_STOCK_MIN));
   const [submitting, setSubmitting] = useState(false);
@@ -29,11 +36,12 @@ export function ProductFormModal({
       setBarcode(initialBarcode);
       setName('');
       setCategory('');
+      setLocation(initialLocation);
       setStockCurrent('0');
       setStockMin(String(appConfig.DEFAULT_STOCK_MIN));
       setError(null);
     }
-  }, [open, initialBarcode]);
+  }, [open, initialBarcode, initialLocation]);
 
   if (!open) return null;
 
@@ -51,6 +59,7 @@ export function ProductFormModal({
         barcode: barcode.trim(),
         name: name.trim(),
         category: category.trim() || null,
+        location,
         stock_current: Math.max(0, parseInt(stockCurrent, 10) || 0),
         stock_min: Math.max(0, parseInt(stockMin, 10) || 0),
       });
@@ -69,14 +78,14 @@ export function ProductFormModal({
       aria-modal="true"
       aria-labelledby="new-product-title"
     >
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6">
+      <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 id="new-product-title" className="text-base font-semibold text-zinc-950">
               Nuevo producto
             </h2>
             <p className="text-xs text-zinc-500">
-              Registra un artículo con su código de barras y stock inicial.
+              Registra un artículo con su código de barras, ubicación y stock inicial.
             </p>
           </div>
           <button
@@ -117,9 +126,32 @@ export function ProductFormModal({
               autoFocus={Boolean(initialBarcode)}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Café Molido Natural 250g"
+              placeholder="Ej. Proteína Whey Nova 1 kg"
               className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition-colors focus:border-zinc-900"
             />
+          </div>
+
+          <div>
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-zinc-700">
+              <MapPin className="h-3.5 w-3.5 text-zinc-400" />
+              Ubicación
+            </span>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {PRODUCT_LOCATIONS.map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => setLocation(loc)}
+                  className={`min-h-[40px] rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                    location === loc
+                      ? 'border-zinc-950 bg-zinc-950 text-white'
+                      : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950'
+                  }`}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -131,7 +163,7 @@ export function ProductFormModal({
               type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="Ej. Bebidas, Alimentación..."
+              placeholder="Ej. Bebidas, Suplementación..."
               className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition-colors focus:border-zinc-900"
             />
           </div>

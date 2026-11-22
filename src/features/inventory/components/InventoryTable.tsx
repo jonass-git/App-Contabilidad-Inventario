@@ -1,20 +1,27 @@
 import { useState } from 'react';
-import { Check, Layers, Minus, Plus } from 'lucide-react';
+import { Check, Layers, MapPin, Minus, Pencil, Plus } from 'lucide-react';
 import type { ProductWithBarcodes } from '../../../types/database';
 
 interface InventoryTableProps {
   products: ProductWithBarcodes[];
   highlightedId: string | null;
   onUpdateStock: (product: ProductWithBarcodes, newStock: number) => Promise<void>;
+  onEditProduct: (product: ProductWithBarcodes) => void;
 }
 
 interface StockRowProps {
   product: ProductWithBarcodes;
   highlighted: boolean;
   onUpdateStock: (product: ProductWithBarcodes, newStock: number) => Promise<void>;
+  onEditProduct: (product: ProductWithBarcodes) => void;
 }
 
-function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
+function StockRow({
+  product,
+  highlighted,
+  onUpdateStock,
+  onEditProduct,
+}: StockRowProps) {
   const [editing, setEditing] = useState(false);
   const [draftStock, setDraftStock] = useState(String(product.stock_current));
   const [saving, setSaving] = useState(false);
@@ -67,6 +74,10 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
             <p className="truncate text-sm font-medium text-zinc-950">{product.name}</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
               <span className="font-mono">{product.barcode}</span>
+              <span className="inline-flex items-center gap-0.5 rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] font-medium text-zinc-700 sm:hidden">
+                <MapPin className="h-2.5 w-2.5 text-zinc-400" />
+                {product.location}
+              </span>
               {hasMultipleBarcodes && (
                 <button
                   type="button"
@@ -76,11 +87,6 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
                   <Layers className="h-3 w-3" />
                   {product.barcodes.length} códigos
                 </button>
-              )}
-              {product.category && (
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600 sm:hidden">
-                  {product.category}
-                </span>
               )}
             </div>
 
@@ -100,7 +106,14 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
         </div>
       </td>
 
-      <td className="hidden px-3 py-3 text-xs text-zinc-500 sm:table-cell">
+      <td className="hidden px-3 py-3 sm:table-cell">
+        <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
+          <MapPin className="h-3 w-3 text-zinc-400" />
+          {product.location}
+        </span>
+      </td>
+
+      <td className="hidden px-3 py-3 text-xs text-zinc-500 lg:table-cell">
         {product.category ?? '—'}
       </td>
 
@@ -108,7 +121,7 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
         {product.stock_min}
       </td>
 
-      <td className="py-3 pr-4 pl-3 text-right">
+      <td className="py-3 pr-2 pl-3 text-right">
         <div className="inline-flex items-center justify-end gap-1.5">
           {editing ? (
             <form
@@ -165,7 +178,7 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
                   setDraftStock(String(product.stock_current));
                   setEditing(true);
                 }}
-                className={`min-w-[3rem] rounded-md px-2 py-1 text-center text-sm font-semibold tabular-nums transition-colors ${
+                className={`min-w-[2.75rem] rounded-md px-2 py-1 text-center text-sm font-semibold tabular-nums transition-colors ${
                   isOutOfStock
                     ? 'bg-red-50 text-red-700 hover:bg-red-100'
                     : isLowStock
@@ -190,6 +203,18 @@ function StockRow({ product, highlighted, onUpdateStock }: StockRowProps) {
           )}
         </div>
       </td>
+
+      <td className="py-3 pr-3 pl-1 text-right">
+        <button
+          type="button"
+          onClick={() => onEditProduct(product)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-zinc-400 transition-colors hover:border-zinc-200 hover:bg-zinc-100 hover:text-zinc-950"
+          title={`Editar o eliminar ${product.name}`}
+          aria-label={`Editar ${product.name}`}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -198,13 +223,14 @@ export function InventoryTable({
   products,
   highlightedId,
   onUpdateStock,
+  onEditProduct,
 }: InventoryTableProps) {
   if (products.length === 0) {
     return (
       <div className="rounded-xl border border-zinc-200 bg-white px-6 py-12 text-center">
         <p className="text-sm font-medium text-zinc-900">Sin productos que mostrar</p>
         <p className="mt-1 text-xs text-zinc-500">
-          Prueba con otra búsqueda o añade tu primer artículo.
+          Prueba con otra búsqueda, cambia el filtro de ubicación o añade un artículo.
         </p>
       </div>
     );
@@ -217,9 +243,13 @@ export function InventoryTable({
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50/70 text-[11px] font-medium uppercase tracking-wider text-zinc-500">
               <th className="py-2.5 pr-3 pl-4">Producto / Códigos</th>
-              <th className="hidden px-3 py-2.5 sm:table-cell">Categoría</th>
+              <th className="hidden px-3 py-2.5 sm:table-cell">Ubicación</th>
+              <th className="hidden px-3 py-2.5 lg:table-cell">Categoría</th>
               <th className="hidden px-3 py-2.5 text-right md:table-cell">Mínimo</th>
-              <th className="py-2.5 pr-4 pl-3 text-right">Stock actual</th>
+              <th className="py-2.5 pr-2 pl-3 text-right">Stock actual</th>
+              <th className="w-10 py-2.5 pr-3 pl-1 text-right">
+                <span className="sr-only">Editar</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -229,6 +259,7 @@ export function InventoryTable({
                 product={product}
                 highlighted={product.id === highlightedId}
                 onUpdateStock={onUpdateStock}
+                onEditProduct={onEditProduct}
               />
             ))}
           </tbody>

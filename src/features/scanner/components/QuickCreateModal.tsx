@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link2, Plus, Search, X } from 'lucide-react';
-import { appConfig } from '../../../config/appConfig';
+import { Link2, MapPin, Plus, Search, X } from 'lucide-react';
+import {
+  appConfig,
+  PRODUCT_LOCATIONS,
+  type ProductLocation,
+} from '../../../config/appConfig';
 import type { ProductWithBarcodes } from '../../../types/database';
 
 export interface NewProductDraft {
   barcode: string;
   name: string;
   category: string | null;
+  location: ProductLocation;
   stockMin: number;
 }
 
 interface QuickCreateModalProps {
   barcode: string | null;
   products: ProductWithBarcodes[];
+  selectedLocation: ProductLocation | 'all';
   onClose: () => void;
   onStartNewDraft: (draft: NewProductDraft) => void;
   onAttachToExisting: (product: ProductWithBarcodes, barcode: string) => void;
@@ -23,6 +29,7 @@ type ModalTab = 'new' | 'attach';
 export function QuickCreateModal({
   barcode,
   products,
+  selectedLocation,
   onClose,
   onStartNewDraft,
   onAttachToExisting,
@@ -30,7 +37,11 @@ export function QuickCreateModal({
   const [tab, setTab] = useState<ModalTab>('new');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [location, setLocation] = useState<ProductLocation>(
+    selectedLocation === 'all' ? appConfig.DEFAULT_LOCATION : selectedLocation,
+  );
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAllLocations, setShowAllLocations] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,23 +49,33 @@ export function QuickCreateModal({
       setTab('new');
       setName('');
       setCategory('');
+      setLocation(
+        selectedLocation === 'all' ? appConfig.DEFAULT_LOCATION : selectedLocation,
+      );
       setSearchQuery('');
+      setShowAllLocations(false);
       setError(null);
     }
-  }, [barcode]);
+  }, [barcode, selectedLocation]);
 
   const matchingProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return products.slice(0, 12);
-    return products
+    const scoped =
+      selectedLocation !== 'all' && !showAllLocations
+        ? products.filter((p) => p.location === selectedLocation)
+        : products;
+
+    if (!q) return scoped.slice(0, 12);
+    return scoped
       .filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
+          p.location.toLowerCase().includes(q) ||
           (p.category?.toLowerCase().includes(q) ?? false) ||
           p.barcodes.some((code) => code.toLowerCase().includes(q)),
       )
       .slice(0, 15);
-  }, [products, searchQuery]);
+  }, [products, searchQuery, selectedLocation, showAllLocations]);
 
   if (!barcode) return null;
 
@@ -69,6 +90,7 @@ export function QuickCreateModal({
       barcode,
       name: name.trim(),
       category: category.trim() || null,
+      location,
       stockMin: appConfig.DEFAULT_STOCK_MIN,
     });
   };
@@ -80,7 +102,7 @@ export function QuickCreateModal({
       aria-modal="true"
       aria-labelledby="quick-create-title"
     >
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5">
+      <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-white p-5">
         <div className="mb-3 flex items-center justify-between">
           <div>
             <h2 id="quick-create-title" className="text-base font-semibold text-zinc-950">
@@ -153,7 +175,33 @@ export function QuickCreateModal({
             </div>
 
             <div>
-              <label htmlFor="quick-category" className="mb-1.5 block text-xs font-medium text-zinc-700">
+              <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-zinc-700">
+                <MapPin className="h-3.5 w-3.5 text-zinc-400" />
+                Ubicación
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PRODUCT_LOCATIONS.map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => setLocation(loc)}
+                    className={`min-h-[44px] rounded-lg border px-3 text-xs font-medium transition-colors ${
+                      location === loc
+                        ? 'border-zinc-950 bg-zinc-950 text-white'
+                        : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                  >
+                    {loc}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="quick-category"
+                className="mb-1.5 block text-xs font-medium text-zinc-700"
+              >
                 Categoría <span className="text-zinc-400">(opcional)</span>
               </label>
               <input
@@ -207,10 +255,25 @@ export function QuickCreateModal({
               />
             </div>
 
+            {selectedLocation !== 'all' && (
+              <div className="flex items-center justify-between text-xs text-zinc-500">
+                <span>
+                  Mostrando: <strong>{showAllLocations ? 'Todas' : selectedLocation}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllLocations((prev) => !prev)}
+                  className="font-medium text-zinc-900 underline underline-offset-2"
+                >
+                  {showAllLocations ? `Solo ${selectedLocation}` : 'Ver todas las zonas'}
+                </button>
+              </div>
+            )}
+
             <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
               {matchingProducts.length === 0 ? (
                 <p className="py-6 text-center text-xs text-zinc-500">
-                  No se encontraron productos con ese nombre.
+                  No se encontraron productos en esta vista.
                 </p>
               ) : (
                 matchingProducts.map((product) => (
@@ -223,7 +286,8 @@ export function QuickCreateModal({
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-zinc-950">{product.name}</p>
                       <p className="text-[11px] text-zinc-500">
-                        Stock actual: {product.stock_current} · {product.barcodes.length}{' '}
+                        {product.location} · Stock: {product.stock_current} ·{' '}
+                        {product.barcodes.length}{' '}
                         {product.barcodes.length === 1 ? 'código' : 'códigos'}
                       </p>
                     </div>

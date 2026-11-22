@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react';
-import { ClipboardList, Package, Plus, ScanBarcode } from 'lucide-react';
+import {
+  ClipboardCheck,
+  ClipboardList,
+  Package,
+  Plus,
+  ScanBarcode,
+} from 'lucide-react';
 
-export type ActiveTab = 'inventory' | 'audit' | 'scanner';
+export type ActiveTab = 'inventory' | 'stocktake' | 'audit' | 'scanner';
 
 interface LayoutProps {
   activeTab: ActiveTab;
@@ -18,7 +24,7 @@ export function Layout({
 }: LayoutProps) {
   return (
     <div className="min-h-dvh bg-white text-zinc-950">
-      {/* Barra superior limpia para PC (oculta en móvil excepto marca discreta) */}
+      {/* Barra superior limpia para PC */}
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur-xs">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-6">
@@ -42,6 +48,19 @@ export function Layout({
               >
                 <Package className="h-4 w-4" />
                 Inventario
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onTabChange('stocktake')}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors ${
+                  activeTab === 'stocktake'
+                    ? 'bg-zinc-100 text-zinc-950'
+                    : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-950'
+                }`}
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                Conteo / Auditoría
               </button>
 
               <button
@@ -73,7 +92,7 @@ export function Layout({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Acceso discreto a descuadres en móvil desde cabecera */}
+            {/* Acceso discreto a historial en móvil */}
             <button
               type="button"
               onClick={() => onTabChange('audit')}
@@ -84,7 +103,7 @@ export function Layout({
               }`}
             >
               <ClipboardList className="h-3.5 w-3.5" />
-              Descuadres
+              Historial
             </button>
 
             {/* Botón Nuevo Producto en PC */}
@@ -103,35 +122,48 @@ export function Layout({
       {/* Contenido principal con espacio inferior en móvil para la barra fija */}
       <main className="mx-auto max-w-6xl px-4 py-5 pb-24 sm:px-6 md:pb-10">{children}</main>
 
-      {/* Barra inferior móvil con 2 botones táctiles grandes (>= 48px) */}
+      {/* Barra inferior móvil con botones táctiles grandes (>= 48px) */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 px-3 py-2 backdrop-blur-xs md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-zinc-200 bg-white/95 px-2.5 py-2 backdrop-blur-xs md:hidden"
         aria-label="Navegación móvil"
       >
-        <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
+        <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => onTabChange('scanner')}
-            className={`flex min-h-[52px] items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors ${
+            className={`flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-colors ${
               activeTab === 'scanner'
                 ? 'bg-zinc-950 text-white'
                 : 'border border-zinc-200 bg-white text-zinc-700 active:bg-zinc-100'
             }`}
           >
-            <ScanBarcode className="h-5 w-5" />
+            <ScanBarcode className="h-4 w-4" />
             Escanear
           </button>
 
           <button
             type="button"
+            onClick={() => onTabChange('stocktake')}
+            className={`flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-colors ${
+              activeTab === 'stocktake'
+                ? 'bg-zinc-950 text-white'
+                : 'border border-zinc-200 bg-white text-zinc-700 active:bg-zinc-100'
+            }`}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            Conteo
+          </button>
+
+          <button
+            type="button"
             onClick={() => onTabChange('inventory')}
-            className={`flex min-h-[52px] items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors ${
+            className={`flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-colors ${
               activeTab === 'inventory'
                 ? 'bg-zinc-950 text-white'
                 : 'border border-zinc-200 bg-white text-zinc-700 active:bg-zinc-100'
             }`}
           >
-            <Package className="h-5 w-5" />
+            <Package className="h-4 w-4" />
             Inventario
           </button>
         </div>

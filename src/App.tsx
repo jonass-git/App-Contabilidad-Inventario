@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { Layout, type ActiveTab } from './components/Layout';
+import { appConfig, type ProductLocation } from './config/appConfig';
 import { AuditLogsView } from './features/audit/components/AuditLogsView';
 import { useInventoryLogs } from './features/audit/hooks/useInventoryLogs';
+import { EditProductModal } from './features/inventory/components/EditProductModal';
 import { InventoryView } from './features/inventory/components/InventoryView';
 import { ProductFormModal } from './features/inventory/components/ProductFormModal';
-import { useProducts } from './features/inventory/hooks/useProducts';
+import {
+  useProducts,
+  type UpdateProductInput,
+} from './features/inventory/hooks/useProducts';
 import { ScannerView } from './features/scanner/components/ScannerView';
+import { StocktakeView } from './features/stocktake/components/StocktakeView';
 import { isSupabaseConfigured } from './lib/supabase';
 import type { ProductInsert, ProductWithBarcodes } from './types/database';
 
@@ -21,6 +27,10 @@ export function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(getInitialTab);
   const [newProductModalOpen, setNewProductModalOpen] = useState(false);
   const [prefillBarcode, setPrefillBarcode] = useState('');
+  const [prefillLocation, setPrefillLocation] = useState<ProductLocation>(
+    appConfig.DEFAULT_LOCATION,
+  );
+  const [editingProduct, setEditingProduct] = useState<ProductWithBarcodes | null>(null);
 
   const {
     products,
@@ -28,8 +38,10 @@ export function App() {
     error: productsError,
     findByBarcode,
     createProduct,
+    updateProduct,
     updateStock,
     commitScannerSession,
+    deleteProduct,
   } = useProducts();
 
   const {
@@ -39,8 +51,12 @@ export function App() {
     refetch: refetchLogs,
   } = useInventoryLogs();
 
-  const handleOpenNewProduct = (barcode = '') => {
+  const handleOpenNewProduct = (
+    barcode = '',
+    location: ProductLocation = appConfig.DEFAULT_LOCATION,
+  ) => {
     setPrefillBarcode(barcode);
+    setPrefillLocation(location);
     setNewProductModalOpen(true);
   };
 
@@ -51,6 +67,19 @@ export function App() {
 
   const handleUpdateStockInline = async (product: ProductWithBarcodes, newStock: number) => {
     await updateStock(product, newStock);
+    void refetchLogs();
+  };
+
+  const handleSaveEditedProduct = async (
+    product: ProductWithBarcodes,
+    updates: UpdateProductInput,
+  ) => {
+    await updateProduct(product, updates);
+    void refetchLogs();
+  };
+
+  const handleDeleteProduct = async (product: ProductWithBarcodes) => {
+    await deleteProduct(product.id);
     void refetchLogs();
   };
 
@@ -83,8 +112,13 @@ export function App() {
           loading={productsLoading}
           error={productsError}
           onUpdateStock={handleUpdateStockInline}
+          onEditProduct={(product) => setEditingProduct(product)}
           onRequestNewProduct={handleOpenNewProduct}
         />
+      )}
+
+      {activeTab === 'stocktake' && (
+        <StocktakeView products={products} findByBarcode={findByBarcode} />
       )}
 
       {activeTab === 'audit' && (
@@ -111,8 +145,16 @@ export function App() {
       <ProductFormModal
         open={newProductModalOpen}
         initialBarcode={prefillBarcode}
+        initialLocation={prefillLocation}
         onClose={() => setNewProductModalOpen(false)}
         onSubmit={handleCreateProduct}
+      />
+
+      <EditProductModal
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSave={handleSaveEditedProduct}
+        onDelete={handleDeleteProduct}
       />
     </Layout>
   );
